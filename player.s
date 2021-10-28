@@ -20,19 +20,12 @@ player.sprite: .word
 
 
 .text
-# ecall para finalizar o programa
-.macro EXIT()
-	li a7, 10
-	ecall 
-.end_macro
-
-
-# dado x,y e width da matriz, calcula o idx do PLAYER e retorna o end VGA correspondente
-IDX:
-	flw fa0,4(s0)	# ft0 = X
-	flw fa1,8(s0)	# ft1 = Y
+# recebe x,y e width da matriz, e calcula o idx do PLAYER
+.macro IDX (%player, %w)
+	flw fa0,4(%player)	# ft0 = X
+	flw fa1,8(%player)	# ft1 = Y
 	
-	mv a2,a2		# w (largura do mapa) (INT) -- !! MOV inutil para o jal, mas para macro nao
+	mv a2,%w		# w (largura do mapa) (INT)
 	fcvt.s.w fa2,a2		# converte INT para float
 	
 	li t0,16		# carrega TILE SIZE do MAPA
@@ -51,12 +44,14 @@ IDX:
 	li t0,0xFF000000
 	add a0,a0,t0		# ENDERECO REAL DA VGA
 	# RETORNA EM A0 VALOR DO ENDERECO DA VGA
-EXIT_IDX: ret
+	
+.end_macro
 
 
 
 # player = s0 -> desenha o player de acordo com seu IDX (end mem VGA)
-DRAW_PLAYER:	
+.macro DRAW_PLAYER(%idx, %cor)	
+
 	li t0,20		# width matriz
 	li t1, 320		# t1 = 320 (largura da VGA)
 	addi t1,t1,-16		# offset para proxLinha (320 - width do player)
@@ -72,29 +67,29 @@ LOOP_DRW_I:
 LOOP_DRW_J:
 	
 	#lb t5,0(a5)	# carrega o byte da sprite
-	sb a1,0(a0)	# armazena o dado na VGA (a0)
+	sb %cor,0(%idx)	# armazena o dado na VGA (a0)
 	
 	addi t3,t3,1	# j++
-	addi a0,a0,1	# t0++ (endreco VGA)
+	addi %idx,%idx,1	# t0++ (endreco VGA)
 	#addi a5,a5,1	# a5++ (endreco sprite)
 	
 	blt t3,t4,LOOP_DRW_J
 	
 	addi t2,t2,1	# i++
-	add a0,a0,t1	# t0 (endereco) + offiset new line
+	add %idx,%idx,t1	# t0 (endereco) + offiset new line
 	j LOOP_DRW_I
 
-EXIT_DRAW_P: ret		
-
+EXIT_DRAW_P:		
+				
+.end_macro
 
 
 
 # Ajusta a posicao x,y (e/ou IDX) para que nao ultrapasse os limites do mapa
 # garantido que o mapa sempre eh 20x15
-# recebe em s0 = player
-MAP_BOUNDARY:
-	flw fa0,4(s0)	# player.X
-	flw fa1,8(s0)	# player.Y
+.macro MAP_BOUNDARY(%player)
+	flw fa0,4(%player)	# player.X
+	flw fa1,8(%player)	# player.Y
 	
 	li t0,20		# MAP WIDTH 
 	li t1,15		# MAP HEIGHT
@@ -109,7 +104,7 @@ MAP_BOUNDARY:
 X_0:	flt.s t3,fa0,ft2	# se X < 0
 	beqz t3,X_20		# se t3 == false, nao faz nada
 	fmv.s fa0,ft2		# X = 0
-	fsw fa0,4(s0)	# salva X
+	fsw fa0,4(%player)	# salva X
 	j MAP_BDY_EXIT
 	
 X_20:	fadd.s fa3,fa0,ft4	# X + 1 (PLAYER + seu tamanho)
@@ -119,27 +114,27 @@ X_20:	fadd.s fa3,fa0,ft4	# X + 1 (PLAYER + seu tamanho)
 	fcvt.s.w ft4,t4		# convert para float
 	
 	fmv.s fa0,ft4		# X = 19
-	fsw fa0,4(s0)	# salva X
+	fsw fa0,4(%player)	# salva X
 	j MAP_BDY_EXIT
 	
 Y_0:	flt.s t3,fa1,ft2
 	beqz t3,Y_15 	 # se t3 == false, nao faz nada 	
 	fmv.s fa1,ft2		 # Y = 0
-	fsw fa1,8(s0)	 # salva Y
+	fsw fa1,8(%player)	 # salva Y
 	
 Y_15: 	fle.s t3,fa1,ft1		# Y > 15
 	bnez t3,MAP_BDY_EXIT
 	EXIT()
 	
-MAP_BDY_EXIT: ret	
+MAP_BDY_EXIT:	
+.end_macro
 
 
 
-
-# altera as coord do player (passado como arg em s0), de acordo com a tecla pressionada (passado em a0)
-CONTROLLER:
-	flw fa0,4(s0)	# t0 = player.X
-	flw fa1,8(s0)	# t1 = player.Y
+# altera as coord do player (passado como arg em s0), de acordo com as teclas pressionadas
+.macro CONTROLLER(%player, %key)
+	flw fa0,4(%player)	# t0 = player.X
+	flw fa1,8(%player)	# t1 = player.Y
 	#lw t0,8(%player)	# idx
 	la t1, floatPixel
 	flw ft1,0(t1)	# recupera valor float de 1 pixel
@@ -154,21 +149,23 @@ CONTROLLER:
 	li t4, wKey
 	li t5, sKey
 	
-A:	bne a0, t2, D
+A:	bne %key, t2, D
 	fadd.s fa0,fa0,ft0 		# X--
 	j COORD	
 		
-D:	bne a0, t3, W
+D:	bne %key, t3, W
 	fadd.s fa0,fa0,ft1  		# X++
 	j COORD
 	
-W:	bne a0, t4, S
+W:	bne %key, t4, S
 	fadd.s fa1,fa1,ft0
 	j COORD
 
-S:	bne a0,t5, COORD
+S:	bne %key,t5, COORD
 	fadd.s fa1,fa1,ft1
 COORD:	
-	fsw fa0,4(s0)	# salva X do player
-	fsw fa1,8(s0)	# salva Y do player
-EXIT_CONTROL: ret
+	fsw fa0,4(%player)
+	fsw fa1,8(%player)	
+	
+	
+.end_macro
