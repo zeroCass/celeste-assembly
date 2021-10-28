@@ -3,6 +3,7 @@
 
 .data
 floatPixel: .word 0x3d800000	# valor float para 1 pixel dentro de um bloco de 16 pixels
+zeroConstante: .word 0x00000000
 
 
 
@@ -10,18 +11,19 @@ floatPixel: .word 0x3d800000	# valor float para 1 pixel dentro de um bloco de 16
 player: .word
 player.x: .word 0x41900000
 player.y: .word 0x3f800000
-player.dx: .word
-player.dy: .word
-player.oldx: .word
-player.oldy: .word
+player.dx: .word 0x00000000
+player.dy: .word 0x00000000
+player.oldx: .word 0x00000000
+player.oldy: .word 0x00000000
+# player.dr: 0=idle		1=right, 2=left, 	3=up, 4=down
+player.dir: .word 0x00000000
 player.state: .word
-player.dir: .word
-player.sprite: .word 
+player.sprite: .word 0x00000000
 
 
 .text
-# recebe x,y e width da matriz, e calcula o idx do PLAYER
-.macro IDX (%player, %w)
+# recebe x,y e width da matriz, e calcula o idx do PLAYER e retorna valor da mem VGA
+.macro IDX_2_MEM (%player, %w)
 	flw fa0,4(%player)	# ft0 = X
 	flw fa1,8(%player)	# ft1 = Y
 	
@@ -133,15 +135,21 @@ MAP_BDY_EXIT:
 
 # altera as coord do player (passado como arg em s0), de acordo com as teclas pressionadas
 .macro CONTROLLER(%player, %key)
-	flw fa0,4(%player)	# t0 = player.X
-	flw fa1,8(%player)	# t1 = player.Y
+	flw fa0,12(%player)	# t0 = player.DX
+	flw fa1,16(%player)	# t1 = player.DY
 	#lw t0,8(%player)	# idx
 	la t1, floatPixel
 	flw ft1,0(t1)	# recupera valor float de 1 pixel
 	
+	li t2,4				# valor temp da VELOCIDADE
+	fcvt.s.w ft2,t2		# converte -1 para float
+	fmul.s ft1,ft1,ft2	# aplica velocidade em Pixels para se movimentar
+
 	li t0,-1
 	fcvt.s.w ft0,t0		# converte -1 para float
-	fmul.s ft0,ft0,ft1	# -1* float pixel 
+	fmul.s ft0,ft0,ft1	# -1* float pixel
+
+	fmul.s ft0,ft0,ft2	# aplica velocidade em Pixels para se movimentar 
 	
 	#mv s10,%key
 	li t2, aKey
@@ -151,21 +159,99 @@ MAP_BDY_EXIT:
 	
 A:	bne %key, t2, D
 	fadd.s fa0,fa0,ft0 		# X--
+	# #define a direcao do player (LEFT)
+	li t0,2		# t0 = 0
+	fcvt.s.w ft3,t0		# converte valor para float
+	fsw ft3,28(%player)	# salva valor em player.DIR
+
 	j COORD	
 		
 D:	bne %key, t3, W
 	fadd.s fa0,fa0,ft1  		# X++
+	# #define a direcao do player (RIGHT)
+	li t0,1			# t0 = 0
+	fcvt.s.w ft3,t0		# converte valor para float
+	fsw ft3,28(%player)	# salva valor em player.DIR
+
 	j COORD
 	
 W:	bne %key, t4, S
 	fadd.s fa1,fa1,ft0
+	# #define a direcao do player (DOWN)
+	li t0,3			# t0 = 0
+	fcvt.s.w ft3,t0		# converte valor para float
+	fsw ft3,28(%player)	# salva valor em player.DIR
+
 	j COORD
 
-S:	bne %key,t5, COORD
+S:	bne %key,t5, NOTHING
 	fadd.s fa1,fa1,ft1
+	# #define a direcao do player (DOWN)
+	li t0,4			# t0 = 0
+	fcvt.s.w ft3,t0		# converte valor para float
+	fsw ft3,28(%player)	# salva valor em player.DIR
+
+	j COORD
+
+NOTHING:
+	# #define a direcao do player (IDLE)
+	mv t0,zero			# t0 = 0
+	fcvt.s.w ft3,t0		# converte valor para float
+	fsw ft3,28(%player)	# salva valor em player.DIR
+	j EXIT_CONTROL
+
 COORD:	
-	fsw fa0,4(%player)
-	fsw fa1,8(%player)	
+	fsw fa0,12(%player)	# update DX
+	fsw fa1,16(%player)	# update DY
 	
-	
+EXIT_CONTROL:
 .end_macro
+
+
+# Aplica gravidade e move o player com base em Dx e Dy, velocity
+# player vem em s0
+.macro UPDATE_PLAYER(%player)
+	flw fa0,12(%player)	# t0 = player.DX
+	flw fa1,16(%player)	# t1 = player.DY
+
+	flw ft0,4(%player)
+	flw ft1,8(%player)
+
+	fadd.s ft0,ft0,fa0	# X += DX
+	fadd.s ft1,ft1,fa1	# Y += DY
+
+	fsw ft0,4(%player)	# salva X
+	fsw ft1,8(%player)	# salva Y
+
+	la t2, floatPixel
+	flw fa2,0(t2)	# recupera valor float de 1 pixel
+	fsub.s fa0,fa0,fa2	# DX -= 0.0625 (DX -= 1 px)
+	fsub.s fa1,fa1,fa2	# DY -= 0.0625 (DY -= 1 px)
+	la t0,zeroConstante
+	flw ft0,0(t0)	# ft0 = 0
+	flt.s t0,fa0,ft0	# t0 = 1 se DX < 0
+
+DX_LT_0: beqz t0,DY_LT_0	# se t0 == 0, entao esta tudo ok
+	# se nao, DX tem que ser 0
+	fmv.s fa0,ft0	# DX = 0
+
+DY_LT_0: 
+	flt.s t0,fa1,ft0	# t0 = 1 se DY < 0
+	beqz t0,EXIT_UPDATE_PLY	# se t0 == 0, entao esta tudo ok
+	# se nao, DY tem que ser 0
+	fmv.s fa1,ft0	# DX = 0
+
+	
+EXIT_UPDATE_PLY:
+	fsw fa0,12(%player)	# salva novo DX
+	fsw fa1,16(%player)	# salva novo DX
+.end_macro
+
+
+# checa colisao com todos os tipos de blocos e ajusta a posicao do player
+# player vem em s0
+#.macro COLLISION_PLAYER(%player, %idxMatriz)
+
+#.end_macro
+
+
