@@ -92,7 +92,7 @@ EXIT_DRAW_P:
 	flw fa1,8(%player)	# player.Y
 	
 	li t0,20		# MAP WIDTH 
-	li t1,15		# MAP HEIGHT
+	li t1,14		# MAP HEIGHT
 	li t3,0			# variavel que diz se eh true or false
 	li t4,1
 	
@@ -130,9 +130,9 @@ Y_15: 	fle.s t3,fa1,ft1		# Y > 15
 	fmv.s fa1,ft4		# Y = 14
 	fsw fa1,8(%player)	# salva Y
 	# RESETA GRAVIDADE
-	#flw fa1,16(%player)  # DY
-	#fmv.s fa1,ft2		 # DY = 0
-	#fsw fa1,16(%player)	 # salva Y
+	flw fa2,16(%player)  # DY
+	fmv.s fa2,ft2		 # DY = 0
+	fsw fa2,16(%player)	 # salva DY
 	#EXIT()
 	
 MAP_BDY_EXIT:	
@@ -179,6 +179,9 @@ D:	bne %key, t3, W
 	j COORD
 	
 W:	bne %key, t4, S
+	li t2,5				# valor temp da VELOCIDADE
+	fcvt.s.w ft2,t2		# converte 4 para float
+
 	fmul.s ft0,ft0,ft2
 	fadd.s fa3,fa3,ft0		# DY += VELOCITY
 	# #define a direcao do player (UP)
@@ -237,8 +240,8 @@ COORD:
 	li t1,3
 	beq t0,t1,UPDT_UP
 
-	li t1,4
-	beq t0,t1,UPDT_DOWN
+	#li t1,4
+	#beq t0,t1,UPDT_DOWN
 	J EXIT_UPDATE_PLY
 
 UPDT_RIGHT:
@@ -269,11 +272,12 @@ UPDT_UP:
 	fadd.s fa1,fa1,fa2	# DY += 0.0625 (DY -= 1 px)
 	la t0,zeroConstante
 	flw ft0,0(t0)	# ft0 = 0
-	flt.s t0,fa1,ft0	# t0 = 0 se DY < 0
+	flt.s t0,fa1,ft0	# t0 = 0 se DY >= 0
 
 	bnez t0,EXIT_UPDATE_PLY	# se t0 == 1, entao esta tudo ok
 	# se nao, DY tem que ser 0
-	fmv.s fa1,ft0	# DX = 0
+	fmv.s fa1,ft0	# DY = 0
+	fsw ft0,28(%player)	# reseta estado para IDLE
 	j EXIT_UPDATE_PLY
 
 UPDT_DOWN:
