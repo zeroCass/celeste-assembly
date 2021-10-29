@@ -1,4 +1,4 @@
-.eqv KDMMIO	0xFF200000	# endereco Keyboard KDMMIO
+.eqv KDMMIO	0xFF200000	# endere�o Keyboard KDMMIO
 .eqv dKey	0x00000064	# ASCII code d key
 .eqv aKey	0x00000061	# ASCII code a key
 .eqv wKey	0x00000077	# ASCII code w key
@@ -7,7 +7,8 @@
 
 .data
 .include "MAP0.data"
-.include "player.s"
+#.include "player.s"
+.include "fixplayer.s"
 .include "maps.s"
 
 .text
@@ -67,7 +68,7 @@ LOOP:
 	
 	li a2,20		# width matriz
 	IDX_2_MEM(s0,a2)		# pega o IDX do player e retorna em a0
-	
+	#IDX(s0,a2)
 
 	li a1,0x07	# cor
 	DRAW_PLAYER(a0,a1) # recebe o idx e uma cor e printa na tela
