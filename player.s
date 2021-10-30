@@ -159,7 +159,6 @@ MAP_BDY_EXIT:
 	fmul.s ft0,ft0,ft2
 	fmul.s ft1,ft1,ft2			# aplica velocidade em Pixels para se movimentar
 
-	#mv s10,%key
 	li t2, aKey
 	li t3, dKey
 	li t4, wKey
@@ -195,11 +194,59 @@ W:	bne %key, t4, S
 	sw t0,28(%player)			# salva valor em player.DIR
 	j COORD
 
-S:	bne %key,t5, COORD
+S:	bne %key,t5, CK_DASH
 	fadd.s fa1,fa1,ft1
 	# #define a direcao do player (DOWN)
 	li t0,4						# t0 = 4
 	sw t0,28(%player)			# salva valor em player.DIR
+
+
+CK_DASH:
+
+	la t1, floatPixel
+	flw ft1,0(t1)				# recupera valor float de 1 pixel
+	
+	li t0,-1
+	fcvt.s.w ft0,t0				# converte -1 para float
+	fmul.s ft0,ft0,ft1			# -1* float pixel 
+	
+	li t2,18					# valor temp da VELOCIDADE
+	fcvt.s.w ft2,t2				# converte 4 para float
+	fmul.s ft0,ft0,ft2
+	fmul.s ft1,ft1,ft2			# aplica velocidade em Pixels para se movimentar
+
+	li t0, jKey
+	li t1, lKey
+	li t2, iKey
+
+DASH_LEFT: bne %key,t0, DASH_RIGHT
+	#fadd.s fa2,fa2,ft0
+	fmv.s fa2,ft0				# DX = dash value
+	li t0,2						# t0 = 1 (left)
+	sw t0,28(%player)			# salva valor em player.DIR
+	j COORD
+
+DASH_RIGHT: bne %key,t1,DASH_UP
+	#fadd.s fa2,fa2,ft0
+	fmv.s fa2,ft1				# DX = dash value
+	li t0,1						# t0 = 1 (right)
+	sw t0,28(%player)			# salva valor em player.DIR
+	j COORD
+
+DASH_UP: bne %key,t2,COORD
+	la t0,floatPixel
+	flw ft0,0(t0)				# carrega valor de 1 pixel
+	li t0,-1		
+	fcvt.s.w ft1,t0				# converte -1 para float
+	fmul.s ft0,ft0,ft1			# pixel * -1
+
+	li t2, 22					# speed
+	fcvt.s.w ft1,t2				#converte para float
+	fmul.s ft0,ft0,ft1
+	fmv.s fa3,ft0
+	li t0,3
+	sw t0,28(%player)
+
 
 COORD:	
 	fsw fa0,4(%player)
