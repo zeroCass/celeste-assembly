@@ -1,10 +1,8 @@
-.eqv KDMMIO	0xFF200000	# endereco Keyboard KDMMIO
+.eqv KDMMIO	0xFF200000	# endere�o Keyboard KDMMIO
 .eqv dKey	0x00000064	# ASCII code d key
 .eqv aKey	0x00000061	# ASCII code a key
 .eqv wKey	0x00000077	# ASCII code w key
 .eqv sKey	0x00000073	# ASCII code s key
-.eqv jKey	0x0000006A	# ASCII code j key
-.eqv lKey	0x0000006C	# ASCII code l key
 
 
 .data
@@ -64,13 +62,11 @@ LOOP:
 	PRINT_MAP0(a0)
 	KB_INPUT()	# retorna em a0 a tecla
 	CONTROLLER(s0, a0)
-	UPDATE_PLAYER(s0)	# altera X e Y do player com base em DX  e DY
 	MAP_BOUNDARY(s0)	# colisao com as bordas do mapa (na borda de baixo player cai e dps reseta jogo)
 	
 	li a2,20		# width matriz
-	IDX_2_MEM(s0,a2)		# pega o IDX do player e retorna em a0
+	IDX(s0,a2)		# pega o IDX do player e retorna em a0
 	
-
 	li a1,0x07	# cor
 	DRAW_PLAYER(a0,a1) # recebe o idx e uma cor e printa na tela
 	
