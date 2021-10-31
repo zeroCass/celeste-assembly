@@ -164,28 +164,29 @@ MAP_BDY_EXIT:
 	
 	li t2,4						# valor temp da VELOCIDADE
 	fcvt.s.w ft2,t2				# converte 4 para float
-	fmul.s ft0,ft0,ft2
-	fmul.s ft1,ft1,ft2			# aplica velocidade em Pixels para se movimentar
+	fmul.s ft0,ft0,ft2			# -negativo (aplica velocidade em Pixels para se movimentar)
+	fmul.s ft1,ft1,ft2			# +positivo (aplica velocidade em Pixels para se movimentar)
 
-	li t2, aKey
-	li t3, dKey
-	li t4, wKey
-	li t5, sKey
+	li t0, aKey
+	li t1, dKey
+	li t2, wKey
+	li t3, sKey
+	li t4, eKey
 	
-A:	bne %key, t2, D
+A:	bne %key, t0, D
 	fadd.s fa0,fa0,ft0 			# X--
 	li t0,2						# t0 = 2
 	sw t0,28(%player)			# salva valor em player.DIR
 	j COORD	
 		
-D:	bne %key, t3, W
+D:	bne %key, t1, W
 	fadd.s fa0,fa0,ft1  		# X++
 	# #define a direcao do player (RIGHT)
 	li t0,1						# t0 = 1
 	sw t0,28(%player)			# salva valor em player.DIR
 	j COORD
 	
-W:	bne %key, t4, S
+W:	bne %key, t2, S
 	lw t0,28(%player)
 	li t1,3
 	beq t0,t1,COORD
@@ -206,11 +207,40 @@ W:	bne %key, t4, S
 	sw t0,28(%player)			# salva valor em player.DIR
 	j COORD
 
-S:	bne %key,t5, CK_DASH
+S:	bne %key,t3, E
 	fadd.s fa1,fa1,ft1
 	# #define a direcao do player (DOWN)
 	li t0,4						# t0 = 4
 	sw t0,28(%player)			# salva valor em player.DIR
+	j COORD
+
+E:	bne %key,t4, CK_DASH
+	# DEFINE VALOR EM DX
+	#fadd.s fa2,fa2,ft1  		# DX = value
+	fmv.s fa2,ft1 
+	li t0,5
+	fcvt.s.w ft0,t0				# converte para float
+	fmul.s fa2,fa2,ft0			# escala DX value por t0
+
+	# DEFINE VALOR EM DY
+	la t0,floatPixel
+	flw ft0,0(t0)				# carrega valor de 1 pixel
+	li t0,-1		
+	fcvt.s.w ft1,t0				# converte -1 para float
+	fmul.s ft0,ft0,ft1			# pixel * -1
+
+	li t2, 18					# speed
+	fcvt.s.w ft1,t2				#converte para float
+
+	fmul.s ft0,ft0,ft1			# VELOCITY = pixelValuee * speed
+	fadd.s fa3,fa3,ft0			# DY += VELOCITY
+	# #define a direcao do player (UP)
+	li t0,5						# direcao para diagonal direita
+	sw t0,28(%player)			# salva valor em player.DIR
+	j COORD
+
+
+
 
 
 # verifica teclas de dash
@@ -359,6 +389,11 @@ UPD:lw t0,28(%player)			# recupera a direcao
 
 	#li t1,4
 	#beq t0,t1,UPDT_DOWN
+	li t1,5
+	beq t0,t1,UPDT_DIAG_R		# diagonal direita
+
+	#li t1,6
+	#beq t0,t1,UPDT_DIAG_L
 	J EXIT_UPDATE_PLY
 
 UPDT_RIGHT:
@@ -415,8 +450,42 @@ UPDT_DOWN:
 	beqz t0,EXIT_UPDATE_PLY		# se t0 == 0, entao esta tudo ok
 	# se nao, DY tem que ser 0
 	fmv.s fa1,ft0				# DX = 0
-	
-	
+	j EXIT_UPDATE_PLY 
+
+
+
+UPDT_DIAG_R:
+	# CALCULA DESACELERACAO -> SE DX > 0, ENTAO DX -= 1 PX
+	fadd.s fa2,fa2,fa2			# 1 pixel * 2 (0.0625 * 2 = 0.125)
+
+	fsub.s fa0,fa0,fa2			# DX -= 0.0625 (DX -= 1 px)
+	la t0,zeroConstante
+	flw ft0,0(t0)				# ft0 = 0
+	# PREVINI DE IR PARA DIRECAO OPOSTA
+	flt.s t0,fa0,ft0			# se DX > 0,t0 = 0 
+
+	# Se DX > 0, ESTA INDO PARA DIREITA E ESTA DESACELARANDO
+	beqz t0,DIAG_UP_R				# se t0 == 0, entao esta tudo ok
+	fmv.s fa0,ft0				# DX = 0
+
+# CALCULA DESACELARACAO EM DY
+# CALCULA DESACELERACAO -> SE DY < 0, ENTAO DY += 1 PX
+DIAG_UP_R:
+
+	fadd.s fa1,fa1,fa2			# DY += 0.0625 (DY += 1 px)
+	la t0,zeroConstante
+	flw ft0,0(t0)				# ft0 = 0
+	flt.s t0,fa1,ft0			# se DY < 0,t0 = 1 
+
+	# Se DY < 0, ESTA INDO PARA CIMA E ESTA DESACELARANDO
+	bnez t0,EXIT_UPDATE_PLY		# se t0 == 1, entao esta tudo ok
+	# se nao, DY tem que ser 0
+	#fmv.s fa1,ft0					# DY = 0
+	#fsw ft0,28(%player)			# reseta estado para IDLE
+	j EXIT_UPDATE_PLY
+
+
+
 	
 EXIT_UPDATE_PLY:
 	fsw fa0,12(%player)			# salva novo DX
