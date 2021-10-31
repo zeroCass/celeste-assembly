@@ -16,6 +16,8 @@ player.oldx: .word 0x00000000
 player.oldy: .word 0x00000000
 player.state: .word 0x00000000
 player.dir: .word 0x00000000
+ 
+player.dash: .word 0x00000000, 0x00000000 # valor 1: true or false, 	valor 2: lastTime
 player.sprite: .word 0x00000000
 
 
@@ -133,6 +135,11 @@ Y_15: 	fle.s t3,fa1,ft1		# Y > 15
 	flw fa2,16(%player)  		# DY
 	fmv.s fa2,ft2				# DY = 0
 	fsw fa2,16(%player)	 		# salva DY
+
+	fmv.s ft2,ft0				# DIRECAO 0
+	fsw ft0,28(%player)			# reseta estado para IDLE
+	mv t0,zero
+	sw t0,32(%player)			# reseta dash
 	#EXIT()
 	
 MAP_BDY_EXIT:	
@@ -178,6 +185,10 @@ D:	bne %key, t3, W
 	j COORD
 	
 W:	bne %key, t4, S
+	lw t0,28(%player)
+	li t1,3
+	beq t0,t1,COORD
+
 	la t0,floatPixel
 	flw ft0,0(t0)				# carrega valor de 1 pixel
 	li t0,-1		
@@ -202,6 +213,8 @@ S:	bne %key,t5, CK_DASH
 
 
 CK_DASH:
+	lw t0,32(%player)
+	bnez t0,COORD
 
 	la t1, floatPixel
 	flw ft1,0(t1)				# recupera valor float de 1 pixel
@@ -224,6 +237,11 @@ DASH_LEFT: bne %key,t0, DASH_RIGHT
 	fmv.s fa2,ft0				# DX = dash value
 	li t0,2						# t0 = 1 (left)
 	sw t0,28(%player)			# salva valor em player.DIR
+
+	li t0,1
+	sw t0,32(%player)			# dash = true
+	csrr t0,3073				# tempo atual
+	sw t0,36(%player)
 	j COORD
 
 DASH_RIGHT: bne %key,t1,DASH_UP
@@ -231,6 +249,11 @@ DASH_RIGHT: bne %key,t1,DASH_UP
 	fmv.s fa2,ft1				# DX = dash value
 	li t0,1						# t0 = 1 (right)
 	sw t0,28(%player)			# salva valor em player.DIR
+
+	li t0,1
+	sw t0,32(%player)			# dash = true
+	csrr t0,3073				# tempo atual
+	sw t0,36(%player)
 	j COORD
 
 DASH_UP: bne %key,t2,COORD
@@ -265,7 +288,43 @@ COORD:
 	la t2, floatPixel
 	flw fa2,0(t2)				# recupera valor float de 1 pixel
 	fadd.s fa1,fa1,fa2			# aplica gravidade
+	#################
+	lw t6,32(%player)			# pega o valor de dash
+	beqz t6,ATT_COORD			# se dash for false, entao pula
+	lw t6,36(%player)			# pega lastTime do dash
+	li t1,250
+	#SLEEP(t6,t1)				# verifica se ja se passou o tempo em ms
+	csrr t5,3073
+	sub t5,t5,t6
+	slt a0,t5,t1
+	beqz a0,Z_DX
+	#and a0,a0,t6
+	#sw a0,32(%player)			# se a0 == 1, permanece no dash
+	
 
+	# se dash == true and dir == 1 || dir == 2 
+	lw t0,32(%player)			# pega o valor de dash
+	beqz t0,ATT_COORD			# se dash for false, entao pula
+
+	lw t0,28(%player)			# pega direcao atual
+	li t1,1
+	beq t0,t1,Z_GRVT			# se direcao == right, entao esta na condicao
+	li t1,2
+	bne t0,t1,ATT_COORD			# se a direcao nao for nem right nem left, sai
+
+Z_GRVT:	
+	li t0,0
+	fcvt.s.w fa1,t0				# sem gravidade durante o dash
+	j ATT_COORD	
+
+
+Z_DX:
+	#sw a0,32(%player)
+	li t0,0
+	fcvt.s.w fa0,t0				# sem gravidade durante o dash
+
+
+ATT_COORD:
 	flw ft0,4(%player)
 	flw ft1,8(%player)
 
@@ -282,7 +341,7 @@ COORD:
     fmul.s fa2,fa2,ft6 			# valor de deseceleracao
 
 
-	lw t0,28(%player)			# recupera a direcao
+UPD:lw t0,28(%player)			# recupera a direcao
 	li t1,1
 	beq t0,t1,UPDT_RIGHT
 
@@ -336,8 +395,8 @@ UPDT_UP:
 	# Se DY < 0, ESTA INDO PARA CIMA E ESTA DESACELARANDO
 	bnez t0,EXIT_UPDATE_PLY		# se t0 == 1, entao esta tudo ok
 	# se nao, DY tem que ser 0
-	fmv.s fa1,ft0				# DY = 0
-	fsw ft0,28(%player)			# reseta estado para IDLE
+	#fmv.s fa1,ft0					# DY = 0
+	#fsw ft0,28(%player)			# reseta estado para IDLE
 	j EXIT_UPDATE_PLY
 
 UPDT_DOWN:
