@@ -3,6 +3,7 @@
 .eqv aKey	0x00000061	# ASCII code a key
 .eqv wKey	0x00000077	# ASCII code w key
 .eqv sKey	0x00000073	# ASCII code s key
+.eqv sKey	0x00000065	# ASCII code e key
 
 .eqv lKey	0x0000006C	# ASCII code l key
 .eqv jKey	0x0000006A	# ASCII code j key

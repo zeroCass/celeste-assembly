@@ -15,6 +15,7 @@ player.dy: .word 0x00000000
 player.oldx: .word 0x00000000
 player.oldy: .word 0x00000000
 player.state: .word 0x00000000
+# DIR: 0=idle	1=right		2=left		3=up	4=down	5=diagonal right	6=diagonal left
 player.dir: .word 0x00000000
  
 player.dash: .word 0x00000000, 0x00000000 # valor 1: true or false, 	valor 2: lastTime
@@ -212,9 +213,10 @@ S:	bne %key,t5, CK_DASH
 	sw t0,28(%player)			# salva valor em player.DIR
 
 
+# verifica teclas de dash
 CK_DASH:
-	lw t0,32(%player)
-	bnez t0,COORD
+	lw t0,32(%player)			# carrega valor atual do dash
+	bnez t0,COORD				# se dash == 1, não pode dashar novamente
 
 	la t1, floatPixel
 	flw ft1,0(t1)				# recupera valor float de 1 pixel
@@ -235,7 +237,7 @@ CK_DASH:
 DASH_LEFT: bne %key,t0, DASH_RIGHT
 	#fadd.s fa2,fa2,ft0
 	fmv.s fa2,ft0				# DX = dash value
-	li t0,2						# t0 = 1 (left)
+	li t0,2						# direcao = left
 	sw t0,28(%player)			# salva valor em player.DIR
 
 	li t0,1
@@ -247,7 +249,7 @@ DASH_LEFT: bne %key,t0, DASH_RIGHT
 DASH_RIGHT: bne %key,t1,DASH_UP
 	#fadd.s fa2,fa2,ft0
 	fmv.s fa2,ft1				# DX = dash value
-	li t0,1						# t0 = 1 (right)
+	li t0,1						# direcao = right
 	sw t0,28(%player)			# salva valor em player.DIR
 
 	li t0,1
@@ -264,11 +266,14 @@ DASH_UP: bne %key,t2,COORD
 	fmul.s ft0,ft0,ft1			# pixel * -1
 
 	li t2, 22					# speed
-	fcvt.s.w ft1,t2				#converte para float
-	fmul.s ft0,ft0,ft1
-	fmv.s fa3,ft0
-	li t0,3
-	sw t0,28(%player)
+	fcvt.s.w ft1,t2				# converte para float
+	fmul.s ft0,ft0,ft1			# speed * -0.0625
+	fmv.s fa3,ft0				# DY = speed * -0.0625
+	li t0,3						# direcao = up
+	sw t0,28(%player)			# salva direcao player.DIR
+
+	li t0,1	
+	sw t0,32(%player)			# dash = true
 
 
 COORD:	
@@ -292,12 +297,12 @@ COORD:
 	lw t6,32(%player)			# pega o valor de dash
 	beqz t6,ATT_COORD			# se dash for false, entao pula
 	lw t6,36(%player)			# pega lastTime do dash
-	li t1,250
+	li t1,250					# duracao em ms do dash
 	#SLEEP(t6,t1)				# verifica se ja se passou o tempo em ms
-	csrr t5,3073
-	sub t5,t5,t6
-	slt a0,t5,t1
-	beqz a0,Z_DX
+	csrr t5,3073				# t5 = currentTIme
+	sub t5,t5,t6				# t5 = currentTime - lasTime
+	slt a0,t5,t1				# 
+	beqz a0,Z_DX				# 
 	#and a0,a0,t6
 	#sw a0,32(%player)			# se a0 == 1, permanece no dash
 	
@@ -313,14 +318,14 @@ COORD:
 	bne t0,t1,ATT_COORD			# se a direcao nao for nem right nem left, sai
 
 Z_GRVT:	
-	li t0,0
+	li t0,0						# DY = 0
 	fcvt.s.w fa1,t0				# sem gravidade durante o dash
 	j ATT_COORD	
 
-
+# ENTENDER ISSO
 Z_DX:
 	#sw a0,32(%player)
-	li t0,0
+	li t0,0						# DX = 0
 	fcvt.s.w fa0,t0				# sem gravidade durante o dash
 
 
