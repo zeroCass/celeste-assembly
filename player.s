@@ -295,6 +295,7 @@ CK_DASH:
 	li t1, lKey
 	li t2, iKey
 	li t3, oKey
+	li t4, uKey
 
 DASH_LEFT: bne a0,t0, DASH_RIGHT
 	#fadd.s fa2,fa2,ft0
@@ -340,7 +341,7 @@ DASH_UP: bne a0,t2,DASH_DR
 	sw t0,36(s0)
 	j COORD
 
-DASH_DR: bne a0,t3,COORD
+DASH_DR: bne a0,t3,DASH_DE
 	# DX
 	li t0,2
 	fcvt.s.w ft0,t0				# converte para float
@@ -367,6 +368,34 @@ DASH_DR: bne a0,t3,COORD
 	csrr t0,3073				# tempo atual
 	sw t0,36(s0)
 	j COORD
+
+DASH_DE: bne a0,t4, COORD
+	li t0,2
+	fcvt.s.w ft1,t0				# converte para float
+	fmul.s ft0,ft0,ft1			# escala valor de DX
+	fmv.s fa2,ft0				# DX = dash value
+
+	# DY
+	la t0,floatPixel
+	flw ft0,0(t0)				# carrega valor de 1 pixel
+	li t0,-1		
+	fcvt.s.w ft1,t0				# converte -1 para float
+	fmul.s ft0,ft0,ft1			# pixel * -1
+
+	li t2, 30					# speed
+	fcvt.s.w ft1,t2				# converte para float
+	fmul.s ft0,ft0,ft1			# speed * -0.0625
+	fmv.s fa3,ft0				# DY = speed * -0.0625
+
+	li t0,6						# direcao = diagonal direita
+	sw t0,28(s0)				# salva direcao player.DIR
+
+	li t0,1	
+	sw t0,32(s0)				# dash = true
+	csrr t0,3073				# tempo atual
+	sw t0,36(s0)
+	j COORD
+
 
 
 COORD:	

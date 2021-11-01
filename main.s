@@ -11,7 +11,7 @@
 .eqv iKey 	0x00000069	# ASCII code i key
 .eqv kKey	0x0000006B	# ASCII code k key
 .eqv oKey	0x0000006F	# ASCII code o key
-
+.eqv uKey	0x00000075	# ASCII code u key
 
 .data
 
