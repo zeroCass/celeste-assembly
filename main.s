@@ -9,13 +9,12 @@
 .eqv lKey	0x0000006C	# ASCII code l key
 .eqv jKey	0x0000006A	# ASCII code j key
 .eqv iKey 	0x00000069	# ASCII code i key
-.eqv kKey	0x0000006B	# ASCII code k key	
+.eqv kKey	0x0000006B	# ASCII code k key
+.eqv oKey	0x0000006F	# ASCII code o key
 
 
 .data
-.include "MAP0.data"
-.include "player.s"
-.include "maps.s"
+
 
 .text
 # ecall para finalizar o programa
@@ -66,18 +65,17 @@ LOOP:
 	
 	
 	la a0,MAP0
-	PRINT_MAP0(a0)
+	jal PRINT_MAP0
 	KB_INPUT()	# retorna em a0 a tecla
-	CONTROLLER(s0, a0)
-	UPDATE_PLAYER(s0)	# altera X e Y do player com base em DX  e DY
-	MAP_BOUNDARY(s0)	# colisao com as bordas do mapa (na borda de baixo player cai e dps reseta jogo)
+	jal CONTROLLER
+	jal UPDATE_PLAYER	# altera X e Y do player com base em DX  e DY
+	jal MAP_BOUNDARY	# colisao com as bordas do mapa (na borda de baixo player cai e dps reseta jogo)
 	
-	li a2,20		# width matriz
-	IDX_2_MEM(s0,a2)		# pega o IDX do player e retorna em a0
-	
+	li a2,20			# width matriz
+	jal IDX_2_MEM		# pega o IDX do player e retorna em a0
 
 	li a1,0x07	# cor
-	DRAW_PLAYER(a0,a1) # recebe o idx e uma cor e printa na tela
+	jal DRAW_PLAYER # recebe o idx e uma cor e printa na tela
 	
 
 	
@@ -85,3 +83,9 @@ LOOP:
 	bnez t0, LOOP
 	
 EXIT:	EXIT()
+
+
+.data
+.include "MAP0.data"
+.include "player.s"
+.include "maps.s"
