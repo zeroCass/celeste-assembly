@@ -7,9 +7,12 @@ zeroConstante: .word 0x00000000
 
 
 
+#0x41300000
+#0x41900000
+#0x3f800000
 player: .word
-player.x: .word 0x41900000
-player.y: .word 0x3f800000
+player.x: .word 0x00000000
+player.y: .word 0x00000000
 player.dx: .word 0x00000000
 player.dy: .word 0x00000000
 player.oldx: .word 0x00000000
@@ -28,8 +31,8 @@ player.sprite: .word 0x00000000
 IDX_2_MEM: #(%player, a2)
 #.macro IDX_2_MEM(%player, %w):
 
-	flw fa0,4(s0)			# ft0 = X
-	flw fa1,8(s0)			# ft1 = Y
+	flw fa0,0(s0)			# ft0 = X
+	flw fa1,4(s0)			# ft1 = Y
 	
 	mv a2,a2					# w (largura do mapa) (INT)
 	fcvt.s.w fa2,a2				# converte INT para float
@@ -94,8 +97,8 @@ EXIT_DRAW_P: ret
 # garantido que o mapa sempre eh 20x15
 # s0 = player
 MAP_BOUNDARY: #(%player)
-	flw fa0,4(s0)			# player.X
-	flw fa1,8(s0)			# player.Y
+	flw fa0,0(s0)			# player.X
+	flw fa1,4(s0)			# player.Y
 	
 	li t0,20					# MAP WIDTH 
 	li t1,14					# MAP HEIGHT
@@ -107,26 +110,26 @@ MAP_BOUNDARY: #(%player)
 	fcvt.s.w ft2,t3				# convert para float
 	fcvt.s.w ft4,t4				# convert para float
 		
-X_0:	flt.s t3,fa0,ft2		# se X < 0
+X_0:flt.s t3,fa0,ft2		# se X < 0
 	beqz t3,X_20				# se t3 == false, nao faz nada
 	fmv.s fa0,ft2				# X = 0
-	fsw fa0,4(s0)			# salva X
+	fsw fa0,0(s0)			# salva X
 	j MAP_BDY_EXIT
 	
-X_20:	fadd.s fa3,fa0,ft4		# X + 1 (PLAYER + seu tamanho)
+X_20:fadd.s fa3,fa0,ft4		# X + 1 (PLAYER + seu tamanho)
 	fle.s t3,fa3,ft0
 	bnez t3,Y_0					# se t3 == false, nao faz nada
 	li t4,19					# t4 = ultima posicao valida do mapa
 	fcvt.s.w ft4,t4				# convert para float
 	
 	fmv.s fa0,ft4				# X = 19
-	fsw fa0,4(s0)			# salva X
+	fsw fa0,0(s0)			# salva X
 	j MAP_BDY_EXIT
 	
 Y_0:	flt.s t3,fa1,ft2
 	beqz t3,Y_15 		 		# se t3 == false, nao faz nada 	
 	fmv.s fa1,ft2		 		# Y = 0
-	fsw fa1,8(s0)			# salva Y
+	fsw fa1,4(s0)			# salva Y
 	
 Y_15: 	fle.s t3,fa1,ft1		# Y > 15
 	bnez t3,MAP_BDY_EXIT
@@ -134,11 +137,11 @@ Y_15: 	fle.s t3,fa1,ft1		# Y > 15
 	fcvt.s.w ft4,t4				# convert para float
 	
 	fmv.s fa1,ft4				# Y = 14
-	fsw fa1,8(s0)			# salva Y
+	fsw fa1,4(s0)			# salva Y
 	# RESETA GRAVIDADE
-	flw fa2,16(s0)  		# DY
+	flw fa2,12(s0)  		# DY
 	fmv.s fa2,ft2				# DY = 0
-	fsw fa2,16(s0)	 		# salva DY
+	fsw fa2,12(s0)	 		# salva DY
 
 	fmv.s ft2,ft0				# DIRECAO 0
 	fsw ft0,28(s0)			# reseta estado para IDLE
@@ -154,10 +157,10 @@ MAP_BDY_EXIT: ret
 # altera as coord do player (passado como arg em s0), de acordo com as teclas pressionadas
 # s0 = player 	a0 = key
 CONTROLLER: #(%player, %key)
-	flw fa0,4(s0)			# t0 = player.X
-	flw fa1,8(s0)			# t1 = player.Y
-	flw fa2,12(s0) 		# a2 = player.DX
-	flw fa3,16(s0) 		# a3 = player.DY
+	flw fa0,0(s0)			# t0 = player.X
+	flw fa1,4(s0)			# t1 = player.Y
+	flw fa2,8(s0) 		# a2 = player.DX
+	flw fa3,12(s0) 		# a3 = player.DY
 	#lw t0,8(s0)			# idx
 	la t1, floatPixel
 	flw ft1,0(t1)				# recupera valor float de 1 pixel
@@ -399,18 +402,18 @@ DASH_DE: bne a0,t4, COORD
 
 
 COORD:	
-	fsw fa0,4(s0)
-	fsw fa1,8(s0)
-	fsw fa2,12(s0)
-	fsw fa3,16(s0)	
+	fsw fa0,0(s0)
+	fsw fa1,4(s0)
+	fsw fa2,8(s0)
+	fsw fa3,12(s0)	
 EXIT_CONTROL: ret
 
 
 # Aplica gravidade e move o player com base em Dx e Dy, velocity
 # player vem em s0
 UPDATE_PLAYER:
-	flw fa0,12(s0)				# t0 = player.DX
-	flw fa1,16(s0)				# t1 = player.DY
+	flw fa0,8(s0)				# t0 = player.DX
+	flw fa1,12(s0)				# t1 = player.DY
 
 	la t2, floatPixel
 	flw fa2,0(t2)				# recupera valor float de 1 pixel
@@ -452,23 +455,51 @@ Z_DX:
 
 
 ATT_COORD:
-	flw ft0,4(s0)
-	flw ft1,8(s0)
+	flw ft0,0(s0)
+	flw ft1,4(s0)
 
 	fadd.s ft0,ft0,fa0			# X += DX
 	fadd.s ft1,ft1,fa1			# Y += DY
+	# VERIFICA COLISAO COM O CHAO
+	addi sp,sp,-20
+	sw ra,0(sp)
+	fsw ft0,4(sp)
+	fsw ft1,8(sp)
+	fsw fa0,12(sp)
+	fsw fa1,16(sp)
+	jal COLLISION_DOWN			# retorna 0 em a0, se nao houve colisao
+	lw ra,0(sp)
+	flw ft0,4(sp)
+	flw ft1,8(sp)
+	flw fa0,12(sp)
+	flw fa1,16(sp)
+	addi sp,sp,20
 
-	fsw ft0,4(s0)			# salva X
-	fsw ft1,8(s0)			# salva Y
+	beqz a0,ATT_XY
+	mv t0,zero
+	fcvt.s.w fa1,t0				# DY = 0
+	
+	addi,a1,a1,-20				# IDX anterior a colisao
+	li t0,20					# WIDTH
+	div a1,a1,t0				# Y = IDX/WIDTH
+	fcvt.s.w ft1,a1				# Y = Y-HEIGHT
+	fsw ft0,0(s0)				# salva X
+	fsw ft1,4(s0)				# salva Y
+	ret
 
+ATT_XY:	
+	fsw ft0,0(s0)				# salva X
+	fsw ft1,4(s0)				# salva Y
+
+
+UPD:
 	la t2, floatPixel
 	flw fa2,0(t2)				# recupera valor float de 1 pixel
     li t6,4						# valor de deseceleracao
     fcvt.s.w ft6,t6				# convete para float
     fmul.s fa2,fa2,ft6 			# valor de deseceleracao
 
-
-UPD:lw t0,28(s0)			# recupera a direcao
+	lw t0,28(s0)				# recupera a direcao
 	li t1,1
 	beq t0,t1,UPDT_RIGHT
 
@@ -527,8 +558,8 @@ UPDT_UP:
 	# Se DY < 0, ESTA INDO PARA CIMA E ESTA DESACELARANDO
 	bnez t0,EXIT_UPDATE_PLY		# se t0 == 1, entao esta tudo ok
 	# se nao, DY tem que ser 0
-	#fmv.s fa1,ft0					# DY = 0
-	#fsw ft0,28(%player)			# reseta estado para IDLE
+	#fmv.s fa1,ft0				# DY = 0
+	#fsw ft0,28(%player)		# reseta estado para IDLE
 	j EXIT_UPDATE_PLY
 
 UPDT_DOWN:
@@ -572,8 +603,8 @@ DIAG_UP_R:
 	# Se DY < 0, ESTA INDO PARA CIMA E ESTA DESACELARANDO
 	bnez t0,EXIT_UPDATE_PLY		# se t0 == 1, entao esta tudo ok
 	# se nao, DY tem que ser 0
-	#fmv.s fa1,ft0					# DY = 0
-	#fsw ft0,28(%player)			# reseta estado para IDLE
+	#fmv.s fa1,ft0				# DY = 0
+	#fsw ft0,28(%player)		# reseta estado para IDLE
 	j EXIT_UPDATE_PLY
 
 
@@ -602,6 +633,52 @@ DIAG_UP_L:
 
 
 EXIT_UPDATE_PLY:
-	fsw fa0,12(s0)			# salva novo DX
-	fsw fa1,16(s0)			# salva novo DX
+	fsw fa0,8(s0)			# salva novo DX
+	fsw fa1,12(s0)			# salva novo DX
 	ret
+
+
+
+
+
+
+
+# verifica colisoes dada a direcao do player e o valor de idx dentro do mapa
+# s0 = player	 	a0 = obj.X		a1 = obj.Y 		a2 = value inside IDX position
+# a3 = value IDX de X + width		# a4 = value IDX de Y + HEIGHT
+COLLISION_DOWN:
+	#flw fa0,0(s0)		# valor de X
+	#flw fa1,4(s0)		# valor de Y
+
+	fmv.s fa0,ft0
+	fmv.s fa1,ft1
+	
+	li t1,1
+	fcvt.s.w ft1,t1		# converte para float
+	fadd.s fa1,fa1,ft1
+	addi sp,sp,-4
+	sw ra,0(sp)
+	jal GET_IDX
+	lw ra,0(sp)
+	addi sp,sp,4
+
+	bnez a0,EXIT_COL
+
+	li t1,15
+	fcvt.s.w ft1,t1		# converte para float
+	la t0,floatPixel
+	flw ft0,0(t0)
+	fmul.s ft0,ft0,ft1	# 15 x 0.0625
+
+	fadd.s fa0,fa0,ft0
+	addi sp,sp,-4
+	sw ra,0(sp)
+	jal GET_IDX
+	lw ra,0(sp)
+	addi sp,sp,4
+	
+	
+EXIT_COL:	
+	#fsw fa0,0(s0)		# valor de X
+	#fsw fa1,4(s0)		# valor de Y
+ 	ret		# a1 = idx 		a0 = valor dentro de idx

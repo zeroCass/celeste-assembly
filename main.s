@@ -58,19 +58,31 @@ INPUT_END:
 MAIN:	
 	la s0,player	# ''objeto'' player
 	csrr s11,3073	# s11 = mainTimer
+	flw fa0,0(s0)
+	flw fa1,4(s0)
+	jal GET_IDX
+	#j EXIT
+
 LOOP:
 	li a0,33	# tempo em milissegundos
 	SLEEP(s11,a0)	# se nao retornar 0, entao nao se passou o tempo
 	bnez a0,LOOP	# if != 0, nao faz as coisas abaixo e pula para o loop
 	
 	
-	la a0,MAP0
+	la a0,mapa
 	jal PRINT_MAP0
 	KB_INPUT()	# retorna em a0 a tecla
 	jal CONTROLLER
+
+
 	jal UPDATE_PLAYER	# altera X e Y do player com base em DX  e DY
-	jal MAP_BOUNDARY	# colisao com as bordas do mapa (na borda de baixo player cai e dps reseta jogo)
+
+	#jal GET_IDX
+	#jal COLLISION
+
+	#jal MAP_BOUNDARY	# colisao com as bordas do mapa (na borda de baixo player cai e dps reseta jogo)
 	
+
 	li a2,20			# width matriz
 	jal IDX_2_MEM		# pega o IDX do player e retorna em a0
 
@@ -86,6 +98,8 @@ EXIT:	EXIT()
 
 
 .data
+.include "mapa.data"
 .include "MAP0.data"
-.include "player.s"
 .include "maps.s"
+.include "player.s"
+
